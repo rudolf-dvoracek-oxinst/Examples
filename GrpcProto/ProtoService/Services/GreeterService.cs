@@ -1,5 +1,5 @@
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using ProtoService;
 
 namespace ProtoService.Services
 {
@@ -20,6 +20,11 @@ namespace ProtoService.Services
                 reply.Message += "s";
             }
             return Task.FromResult(reply);
+        }
+
+        public override Task<Empty> JustSayHello(HelloRequest request, ServerCallContext context)
+        {
+            return Task.FromResult(new Empty());
         }
     }
 
