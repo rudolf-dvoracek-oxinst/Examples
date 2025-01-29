@@ -1,5 +1,6 @@
-﻿using Grpc.Net.Client;
-using ProtoService;
+﻿using CalculatorService;
+using GreeterService;
+using Grpc.Net.Client;
 
 namespace ProtoClient;
 

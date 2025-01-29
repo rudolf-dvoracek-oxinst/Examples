@@ -4,24 +4,12 @@ import "google/protobuf/empty.proto";
 
 package greet;
 
-option csharp_namespace = "ProtoService";
+option csharp_namespace = "GreeterService";
 // The greeting service definition.
 service Greeter {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply);
   rpc JustSayHello(HelloRequest) returns (google.protobuf.Empty);
-}
-
-service Calculator {
-    rpc Sum (SumRequest) returns (SumResult);
-}
-
-message SumRequest {
-    repeated float numbers = 1;
-}
-
-message SumResult {
-    float sum = 1;
 }
 
 // The request message containing the user's name.
