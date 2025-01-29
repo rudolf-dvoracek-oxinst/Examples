@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package calculator;
+
+option csharp_namespace = "CalculatorService";
+
+service Calculator {
+    rpc Sum (SumRequest) returns (SumResult);
+}
+
+message SumRequest {
+    repeated float numbers = 1;
+}
+
+message SumResult {
+    float sum = 1;
+}

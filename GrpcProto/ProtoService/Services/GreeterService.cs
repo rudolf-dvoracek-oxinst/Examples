@@ -1,4 +1,6 @@
+using CalculatorService;
 using Google.Protobuf.WellKnownTypes;
+using GreeterService;
 using Grpc.Core;
 
 namespace ProtoService.Services
