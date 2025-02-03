@@ -9,9 +9,9 @@ service Calculator {
 }
 
 message SumRequest {
-    repeated float numbers = 1;
+    repeated double numbers = 1;
 }
 
 message SumResult {
-    float sum = 1;
+    double sum = 1;
 }

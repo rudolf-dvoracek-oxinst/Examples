@@ -29,7 +29,7 @@ internal class Program
             greeterClient.JustSayHello(helloRequest);
 
             var calculatorClient = new Calculator.CalculatorClient(grpcChannel);
-            var numbers = new[] {3.0f, 2.0f};
+            var numbers = new[] {3.0, 2.0};
             var sumRequest = new SumRequest();
             sumRequest.Numbers.AddRange(numbers);
             Console.WriteLine();
