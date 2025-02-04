@@ -15,7 +15,7 @@ namespace CodeFirstService
             // Configure Kestrel to listen on specific port
             builder.WebHost.ConfigureKestrel(serverOptions =>
             {
-                serverOptions.ListenAnyIP(5069);
+                serverOptions.ListenLocalhost(5069);
             });
             var app = builder.Build();
 

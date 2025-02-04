@@ -9,6 +9,11 @@ public class Program
         // Add services to the container.
         builder.Services.AddGrpc();
 
+        // Configure Kestrel to listen on specific port
+        builder.WebHost.ConfigureKestrel(serverOptions =>
+        {
+            serverOptions.ListenLocalhost(5069);
+        });
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.
