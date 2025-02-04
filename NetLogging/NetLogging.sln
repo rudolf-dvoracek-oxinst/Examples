@@ -1,13 +1,18 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35707.178 d17.12
+VisualStudioVersion = 17.12.35707.178
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Log4NetLogger", "Log4NetLogger\Log4NetLogger.csproj", "{3AA9ED01-9272-4E72-9568-9015D674D6A6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReporterLibrary", "ReporterLibrary\ReporterLibrary.csproj", "{1DB41C12-D6A3-4987-A7CA-995D7F6611E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerilogLogger", "SerilogLogger\SerilogLogger.csproj", "{239D04E8-0EC8-4EC3-8134-E4CAA1B14ED9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A0E5BBB3-4B57-449F-AF94-586B66F4D3C4}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
