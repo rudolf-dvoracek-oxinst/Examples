@@ -35,10 +35,13 @@ namespace SerilogLogger
 
             // Measure execution time
             var stopwatch = Stopwatch.StartNew();
-            reporter.Report();
+            int numberOfItems = 25000;
+            reporter.Report(numberOfItems);
             stopwatch.Stop();
 
-            Console.WriteLine($"Report method took {stopwatch.Elapsed} ms");
+            Console.WriteLine($"Report method took {stopwatch.Elapsed} s");
+            Console.WriteLine($"One item latency {stopwatch.Elapsed.TotalMilliseconds/numberOfItems} ms");
+
             Console.Read();
         }
     }
