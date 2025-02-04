@@ -10,8 +10,13 @@ namespace CodeFirstService
 
             // Add services to the container.
             builder.Services.AddGrpc();
-            builder.Services.AddCodeFirstGrpc();
+            builder.Services.AddCodeFirstGrpc(options => options.EnableDetailedErrors = true);
 
+            // Configure Kestrel to listen on specific port
+            builder.WebHost.ConfigureKestrel(serverOptions =>
+            {
+                serverOptions.ListenAnyIP(5069);
+            });
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
