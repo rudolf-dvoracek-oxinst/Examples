@@ -15,4 +15,8 @@
     <PackageReference Include="Grpc.AspNetCore" Version="2.67.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+
 </Project>
