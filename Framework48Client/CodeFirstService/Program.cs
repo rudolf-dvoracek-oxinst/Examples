@@ -16,7 +16,7 @@ namespace CodeFirstService
             // Configure Kestrel to support HTTP/1.1 and HTTP/2
             builder.WebHost.ConfigureKestrel(serverOptions =>
             {
-                serverOptions.ListenAnyIP(5069, listenOptions =>
+                serverOptions.ListenLocalhost(5069, listenOptions =>
                 {
                     listenOptions.UseHttps();
                     listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
