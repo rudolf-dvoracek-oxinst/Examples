@@ -15,7 +15,7 @@ contains a sample usage of the Serilog logging system in .NET 8 applications. Th
 
 2. Select SerilogLogger as the default project and run it. The application's output will display the total time spent logging and the latency of a single entry.
 
-By comparing the results, you will find that Serilog is about 50% faster.
+By comparing the results, you will find that Serilog is about 50% faster, so latency for writing individual log item is 50% shorter.
 
 ## How to test structured logging:
 
@@ -47,7 +47,8 @@ _logger.LogInformation("Logging information message number {Count} for {@car}", 
 ``` 
 3. Run the project SerilogLogger.
 4. Open the latest log file %PROGRAMDATA%\Examples\Serilog.*.txt.
-5. In the log, you will also see the public properties of the Car object.
+5. In the log, you will also see the public properties of the Car object serialized into the JSON file.
+6. You can create simple parser and select only objects which match desired criteria.
 
 
 
