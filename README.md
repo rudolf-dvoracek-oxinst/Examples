@@ -12,3 +12,6 @@
 
 ## NetLogging
 [Solution](NetLogging/README.md) containing the use of logging through built-in dependency injection in a .net8 project. The project includes a performance comparison between the logging systems Log4net and Serilog. The code also contains an example of structured logging.
+
+## Copilot
+[Solution](Copilot/README.md) containing the use of GitHub Copilot in Visual Studio 2022.
