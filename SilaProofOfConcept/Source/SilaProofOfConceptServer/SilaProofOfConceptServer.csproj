@@ -9,13 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
-    <PackageReference Include="Grpc.AspNetCore.Web" Version="2.71.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="GrpcServices\" />
   </ItemGroup>
 
   <ItemGroup>

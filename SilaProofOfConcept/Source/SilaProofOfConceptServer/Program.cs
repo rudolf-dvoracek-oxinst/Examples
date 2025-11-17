@@ -7,27 +7,40 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SilaProofOfConceptServer.GrpcServices;
+using SilaProofOfConceptServer.Services;
 
 public class Program
 {
     public static void Main(string[] args)
     {
-        // Create a new host builder
-        var builder = Host.CreateDefaultBuilder(args)
-            // Configure the host to use Windows services
+        IHostBuilder builder = Host.CreateDefaultBuilder(args)
             .UseWindowsService(options => options.ServiceName = @"Hello World Service")
-            // Configure the host to use a windows service hosted
             .ConfigureServices(services =>
             {
-                services.AddHostedService<HelloWorldBackgroundService>();
+                // gRPC feature services
+                services.AddSingleton<GreetingFeatureService>();
+                services.AddSingleton<TemperatureFeatureService>();
+
+                // Broadcaster registrations
+                services.AddSingleton<IGreetingBroadcaster>(sp => sp.GetRequiredService<GreetingFeatureService>());
+                services.AddSingleton<ITemperatureBroadcaster>(sp => sp.GetRequiredService<TemperatureFeatureService>());
+
+                // Temperature background producer
+                services.AddSingleton<TemperatureBackgroundService>();
+                services.AddHostedService(sp => sp.GetRequiredService<TemperatureBackgroundService>());
+
             })
             .ConfigureWebHostDefaults(hostBuilder =>
             {
                 hostBuilder.Configure((context, applicationBuilder) =>
+                {
+                    applicationBuilder.UseRouting();
+                    applicationBuilder.UseEndpoints(endpoints =>
                     {
-                        applicationBuilder.UseRouting();
-                        applicationBuilder.UseEndpoints(routeBuilder => routeBuilder.MapGrpcService<HelloWorldService>());
+                        endpoints.MapGrpcService<GreetingFeatureService>();
+                        endpoints.MapGrpcService<TemperatureFeatureService>();
                     });
+                });
 
                 hostBuilder.ConfigureKestrel(options =>
                     options.Listen(IPAddress.Loopback, 5069, listenOptions =>
@@ -35,16 +48,13 @@ public class Program
                         listenOptions.Protocols = HttpProtocols.Http2;
                     }));
 
-                hostBuilder.ConfigureServices(collection =>
+                hostBuilder.ConfigureServices(services =>
                 {
-                    collection.AddGrpc(options =>
-                    {
-                        options.EnableDetailedErrors = true;
-                    });
+                    services.AddGrpc(o => o.EnableDetailedErrors = true);
                 });
             });
 
-        var app = builder.Build();
+        IHost app = builder.Build();
         app.Run();
     }
 }

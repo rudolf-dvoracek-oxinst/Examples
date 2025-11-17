@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package sila2.examples.greeting.v1;
+
+option csharp_namespace = "Sila2.Examples.Greeting.V1";
+
+import "google/protobuf/empty.proto";
+
+// Simplified Feature Definition
+service GreetingFeature {
+  rpc GetFeatureDefinition(google.protobuf.Empty) returns (FeatureDefinition);
+
+  // Command
+  rpc SayHello(SayHelloParameters) returns (ExecutionInfo);
+
+  // Query execution info
+  rpc GetExecutionInfo(ExecutionReference) returns (ExecutionInfo);
+
+  // Property
+  rpc GetLastGreeting(google.protobuf.Empty) returns (GreetingResult);
+
+  // Event stream
+  rpc SubscribeGreetingEmitted(google.protobuf.Empty) returns (stream GreetingResult);
+}
+
+message FeatureDefinition {
+  string feature_name = 1;
+  repeated string commands = 2;
+  repeated string properties = 3;
+  repeated string events = 4;
+}
+
+message SayHelloParameters {
+  string name = 1;
+}
+
+message ExecutionReference {
+  string execution_uuid = 1;
+}
+
+enum ExecutionState {
+  EXECUTION_STATE_PENDING = 0;
+  EXECUTION_STATE_RUNNING = 1;
+  EXECUTION_STATE_SUCCEEDED = 2;
+  EXECUTION_STATE_FAILED = 3;
+}
+
+message ExecutionFailure {
+  int32 code = 1;
+  string reason = 2;
+  string detail = 3;
+}
+
+message GreetingResult {
+  string message = 1;
+  int64 timestamp_unix_ms = 2;
+}
+
+message ExecutionInfo {
+  string execution_uuid = 1;
+  ExecutionState state = 2;
+  GreetingResult result = 3;
+  ExecutionFailure failure = 4;
+}

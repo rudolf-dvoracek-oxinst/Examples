@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿  <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -7,7 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Protos\hello.proto" />
+    <None Remove="Protos\sila2.examples.greeting.v1.proto" />
+    <None Remove="Protos\sila2.examples.temperature.v1.proto" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.Tools" Version="2.71.0" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,7 +25,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="Protos\hello.proto" />
+    <Protobuf Include="Protos\sila2.examples.greeting.v1.proto" />
+    <Protobuf Include="Protos\sila2.examples.temperature.v1.proto" />
   </ItemGroup>
 
 </Project>
