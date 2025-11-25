@@ -1,124 +1,85 @@
 namespace SilaXmlProofOfConceptServer.GrpcServices;
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
-using Sila2.Examples.Temperature.V1;
+using Sila2.Oxfordinstruments.Examples.Temperaturefeature.V1;
 using SilaXmlProofOfConceptServer.Services;
+using Sila2.Org.Silastandard;
+using Sila2.Oxfordinstruments.Examples.Temperaturefeature.V1;
 
-public sealed class TemperatureFeatureService : TemperatureFeature.TemperatureFeatureBase, ITemperatureBroadcaster
+public sealed class TemperatureFeatureService : TemperatureFeature.TemperatureFeatureBase
 {
-    private readonly ILogger<TemperatureFeatureService> _logger;
-    private readonly ConcurrentDictionary<string, TempExecutionInfo> _executions = new();
-    private readonly List<IServerStreamWriter<TemperatureReading>> _subscribers = new();
+    private readonly ILogger<TemperatureFeatureService> logger;
+    private readonly ITemperatureState state;
+    private readonly ITemperatureBroadcaster broadcaster;
 
-    // Current temperature maintained from broadcast updates
-    private TemperatureReading? _latestReading;
-
-    public TemperatureFeatureService(ILogger<TemperatureFeatureService> logger)
+    public TemperatureFeatureService(
+        ILogger<TemperatureFeatureService> logger,
+        ITemperatureState state,
+        ITemperatureBroadcaster broadcaster)
     {
-        this._logger = logger;
+        this.logger = logger;
+        this.state = state;
+        this.broadcaster = broadcaster;
     }
 
-    public override Task<TemperatureFeatureDefinition> GetFeatureDefinition(Empty request, ServerCallContext context)
+    // Proto: rpc MeasureTemperature (...) returns MeasureTemperature_Responses
+    // The generated message MeasureTemperature_Responses is empty, so we just log.
+    public override Task<MeasureTemperature_Responses> MeasureTemperature(
+        MeasureTemperature_Parameters request,
+        ServerCallContext context)
     {
-        var def = new TemperatureFeatureDefinition
-        {
-            FeatureName = "TemperatureFeature"
-        };
-        def.Commands.Add("MeasureTemperature");
-        def.Properties.Add("CurrentTemperature");
-        def.Events.Add("TemperatureUpdated");
-        return Task.FromResult(def);
+        this.logger.LogInformation("MeasureTemperature invoked. Current temp = {Temp:F3} °C", this.state.CurrentTemperature);
+        // Optionally you could trigger an immediate sample broadcast here if desired.
+        return Task.FromResult(new MeasureTemperature_Responses());
     }
 
-    public override Task<TempExecutionInfo> MeasureTemperature(Empty request, ServerCallContext context)
+    // Proto: rpc Subscribe_CurrentTemperature (...) returns (stream Subscribe_CurrentTemperature_Responses)
+    // Stream periodic or event-driven updates of the observable property.
+    public override async Task Subscribe_CurrentTemperature(
+        Subscribe_CurrentTemperature_Parameters request,
+        IServerStreamWriter<Subscribe_CurrentTemperature_Responses> responseStream,
+        ServerCallContext context)
     {
-        // Use latest reading if available, else synthesize an empty one.
-        var reading = this._latestReading ?? new TemperatureReading
+        this.logger.LogInformation("Client subscribed to CurrentTemperature.");
+
+        // Use broadcaster for push updates.
+        using var subscription = this.broadcaster.Subscribe(async sample =>
         {
-            ValueCelsius = 0,
-            TimestampUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-        };
-
-        var execUuid = Guid.NewGuid().ToString("N");
-        var exec = new TempExecutionInfo
-        {
-            ExecutionUuid = execUuid,
-            State = TempExecutionState.Succeeded,
-            Reading = reading
-        };
-
-        this._executions[execUuid] = exec;
-        return Task.FromResult(exec);
-    }
-
-    public override Task<TempExecutionInfo> GetExecutionInfo(TempExecutionReference request, ServerCallContext context)
-    {
-        if (this._executions.TryGetValue(request.ExecutionUuid, out var info))
-            return Task.FromResult(info);
-
-        return Task.FromResult(new TempExecutionInfo
-        {
-            ExecutionUuid = request.ExecutionUuid,
-            State = TempExecutionState.Failed,
-            Failure = new TempExecutionFailure
+            try
             {
-                Code = 404,
-                Reason = "NotFound",
-                Detail = "Execution not found."
+                var msg = new Subscribe_CurrentTemperature_Responses
+                {
+                    CurrentTemperature = new Subscribe_CurrentTemperature_Responses.Types.CurrentTemperature_Struct
+                    {
+                        ValueCelsius = new Real { Value = sample.ValueCelsius },
+                        TimestampUnixMs = new Integer { Value = sample.TimestampUnixMs }
+                    }
+                };
+                await responseStream.WriteAsync(msg);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                this.logger.LogError(ex, "Error writing CurrentTemperature sample.");
             }
         });
-    }
 
-    public override Task<TemperatureReading> GetCurrentTemperature(Empty request, ServerCallContext context)
-    {
-        return Task.FromResult(this._latestReading ?? new TemperatureReading
-        {
-            ValueCelsius = 0,
-            TimestampUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-        });
-    }
-
-    public override async Task SubscribeTemperatureUpdated(Empty request, IServerStreamWriter<TemperatureReading> responseStream, ServerCallContext context)
-    {
-        lock (this._subscribers)
-        {
-            this._subscribers.Add(responseStream);
-        }
-
+        // Keep method alive until client cancels.
         try
         {
             while (!context.CancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(1000, context.CancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(1), context.CancellationToken);
             }
         }
-        catch (TaskCanceledException) { }
-        finally
+        catch (OperationCanceledException)
         {
-            lock (this._subscribers)
-            {
-                this._subscribers.Remove(responseStream);
-            }
+            // Normal cancellation.
         }
-    }
 
-    // Called by TemperatureBackgroundService via ITemperatureBroadcaster
-    public void Broadcast(TemperatureReading reading)
-    {
-        this._latestReading = reading;
-
-        lock (this._subscribers)
-        {
-            foreach (var sub in this._subscribers.ToArray())
-            {
-                _ = sub.WriteAsync(reading);
-            }
-        }
+        this.logger.LogInformation("Client unsubscribed from CurrentTemperature.");
     }
 }

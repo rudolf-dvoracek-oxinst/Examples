@@ -1,113 +1,55 @@
 namespace SilaXmlProofOfConceptServer.GrpcServices;
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
-using Sila2.Examples.Greeting.V1;
-using SilaXmlProofOfConceptServer.Services;
+using Sila2.Oxfordinstruments.Examples.Greetingfeature.V1;
 
-public sealed class GreetingFeatureService : GreetingFeature.GreetingFeatureBase, IGreetingBroadcaster
+public sealed class GreetingFeatureService : GreetingFeature.GreetingFeatureBase
 {
     private readonly ILogger<GreetingFeatureService> _logger;
-    private readonly ConcurrentDictionary<string, ExecutionInfo> _executions = new();
-    private GreetingResult? _lastGreeting;
-    private readonly List<IServerStreamWriter<GreetingResult>> _subscribers = new();
 
     public GreetingFeatureService(ILogger<GreetingFeatureService> logger) => this._logger = logger;
 
-    public override Task<FeatureDefinition> GetFeatureDefinition(Empty request, ServerCallContext context)
+    // Definition: SayHello returns an empty SayHello_Responses (no result fields in proto).
+    public override Task<SayHello_Responses> SayHello(SayHello_Parameters request, ServerCallContext context)
     {
-        var def = new FeatureDefinition
-        {
-            FeatureName = "GreetingFeature"
-        };
-        def.Commands.Add("SayHello");
-        def.Properties.Add("LastGreeting");
-        def.Events.Add("GreetingEmitted");
-        return Task.FromResult(def);
+        var name = request.Name?.Value ?? string.Empty;
+        this._logger.LogInformation("Received SayHello for '{Name}'", name);
+        // Nothing to populate – response is empty by definition.
+        return Task.FromResult(new SayHello_Responses());
     }
 
-    public override Task<ExecutionInfo> SayHello(SayHelloParameters request, ServerCallContext context)
+    // Definition: Subscribe_LastGreeting streams Subscribe_LastGreeting_Responses containing an empty LastGreeting_Struct.
+    public override async Task Subscribe_LastGreeting(
+        Subscribe_LastGreeting_Parameters request,
+        IServerStreamWriter<Subscribe_LastGreeting_Responses> responseStream,
+        ServerCallContext context)
     {
-        var greeting = new GreetingResult
-        {
-            Message = $"Hello {request.Name}",
-            TimestampUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-        };
-
-        this._lastGreeting = greeting;
-
-        var execUuid = Guid.NewGuid().ToString("N");
-        var exec = new ExecutionInfo
-        {
-            ExecutionUuid = execUuid,
-            State = ExecutionState.Succeeded,
-            Result = greeting
-        };
-        this._executions[execUuid] = exec;
-
-        this.Broadcast(greeting);
-
-        return Task.FromResult(exec);
-    }
-
-    public override Task<ExecutionInfo> GetExecutionInfo(ExecutionReference request, ServerCallContext context)
-    {
-        if (this._executions.TryGetValue(request.ExecutionUuid, out var exec))
-            return Task.FromResult(exec);
-
-        return Task.FromResult(new ExecutionInfo
-        {
-            ExecutionUuid = request.ExecutionUuid,
-            State = ExecutionState.Failed,
-            Failure = new ExecutionFailure
-            {
-                Code = 404,
-                Reason = "NotFound",
-                Detail = "Execution not found."
-            }
-        });
-    }
-
-    public override Task<GreetingResult> GetLastGreeting(Empty request, ServerCallContext context)
-        => Task.FromResult(this._lastGreeting ?? new GreetingResult { Message = string.Empty, TimestampUnixMs = 0 });
-
-    public override async Task SubscribeGreetingEmitted(Empty request, IServerStreamWriter<GreetingResult> responseStream, ServerCallContext context)
-    {
-        lock (this._subscribers)
-        {
-            this._subscribers.Add(responseStream);
-        }
+        this._logger.LogInformation("Client subscribed to LastGreeting stream.");
 
         try
         {
+            // Emit a placeholder empty structure periodically since proto defines no fields.
             while (!context.CancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(1000, context.CancellationToken);
-            }
-        }
-        catch (TaskCanceledException) { }
-        finally
-        {
-            lock (this._subscribers)
-            {
-                this._subscribers.Remove(responseStream);
-            }
-        }
-    }
+                var payload = new Subscribe_LastGreeting_Responses
+                {
+                    LastGreeting = new Subscribe_LastGreeting_Responses.Types.LastGreeting_Struct()
+                };
 
-    public void Broadcast(GreetingResult result)
-    {
-        lock (this._subscribers)
-        {
-            foreach (var sub in this._subscribers.ToArray())
-            {
-                _ = sub.WriteAsync(result);
+                await responseStream.WriteAsync(payload);
+                await Task.Delay(TimeSpan.FromSeconds(1), context.CancellationToken);
             }
+        }
+        catch (TaskCanceledException)
+        {
+            // Normal cancellation on client disconnect.
+        }
+        catch (Exception ex)
+        {
+            this._logger.LogError(ex, "Error during Subscribe_LastGreeting streaming.");
         }
     }
 }

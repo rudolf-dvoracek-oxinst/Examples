@@ -1,63 +1,112 @@
 ﻿namespace SilaXmlProofOfConceptClient
 {
     using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using Google.Protobuf.WellKnownTypes;
     using Grpc.Core;
     using Grpc.Net.Client;
-    using Sila2.Examples.Greeting.V1;
-    using Sila2.Examples.Temperature.V1;
+    using Microsoft.Extensions.Configuration;
+    // Replace direct using to avoid type name collision with System.String
+    using SiLAString = Sila2.Org.Silastandard.String;
+    using SiLAReal = Sila2.Org.Silastandard.Real;
+    using SiLAInteger = Sila2.Org.Silastandard.Integer;
+    using Sila2.Oxfordinstruments.Examples.Greetingfeature.V1;
+    using Sila2.Oxfordinstruments.Examples.Temperaturefeature.V1;
+    using SiLA2.Client;
+    using SiLA2.Network.Discovery.mDNS;
+    using SiLA2.Utils.Extensions;
 
     internal class Program
     {
         static async Task Main(string[] args)
         {
-            var uriAddress = "http://localhost:5069";
-            using var channel = GrpcChannel.ForAddress(uriAddress);
+            IConfigurationRoot configurationRoot = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .Build();
 
-            var greetingClient = new GreetingFeature.GreetingFeatureClient(channel);
-            var tempClient = new TemperatureFeature.TemperatureFeatureClient(channel);
+            var configurator = new Configurator(configurationRoot, args);
+            configurator.UpdateServiceProvider();
+            IDictionary<Guid, ConnectionInfo>? serverMap = await configurator.SearchForServers();
 
-            Console.WriteLine("Discover GreetingFeature:");
-            var greetingDef = greetingClient.GetFeatureDefinition(new Empty());
-            Console.WriteLine($"Feature: {greetingDef.FeatureName} Commands={string.Join(",", greetingDef.Commands)}");
+            ConnectionInfo? connectionInfo = serverMap.Values.FirstOrDefault(info => info.ServerType == "SiLA2ExampleServer");
 
-            var exec = greetingClient.SayHello(new SayHelloParameters { Name = "John" });
-            Console.WriteLine($"SayHello execution: {exec.ExecutionUuid} State={exec.State} Message={exec.Result?.Message}");
-
-            Console.WriteLine("LastGreeting property:");
-            var lastGreeting = greetingClient.GetLastGreeting(new Empty());
-            Console.WriteLine($"LastGreeting: {lastGreeting.Message}");
-
-            Console.WriteLine("Discover TemperatureFeature:");
-            var tempDef = tempClient.GetFeatureDefinition(new Empty());
-            Console.WriteLine($"Feature: {tempDef.FeatureName} Properties={string.Join(",", tempDef.Properties)}");
-
-            Console.WriteLine("MeasureTemperature command:");
-            var tempExec = tempClient.MeasureTemperature(new Empty());
-            Console.WriteLine($"Temperature: {tempExec.Reading.ValueCelsius:F3} °C @ {tempExec.Reading.TimestampUnixMs}");
-
-            Console.WriteLine("CurrentTemperature property:");
-            var current = tempClient.GetCurrentTemperature(new Empty());
-            Console.WriteLine($"CurrentTemperature: {current.ValueCelsius:F3} °C");
-
-            Console.WriteLine("Subscribe to TemperatureUpdated events (5 samples)...");
-            using var cts = new CancellationTokenSource();
-            var stream = tempClient.SubscribeTemperatureUpdated(new Empty(), cancellationToken: cts.Token);
-
-            int received = 0;
-            try
+            if (connectionInfo == null)
             {
-                await foreach (var reading in stream.ResponseStream.ReadAllAsync(cts.Token))
-                {
-                    Console.WriteLine($"[Event] {reading.ValueCelsius:F3} °C");
-                    if (++received >= 5) break;
-                }
+                Console.WriteLine("No SiLA2ExampleServer found.");
             }
-            finally
+            else
             {
-                cts.Cancel();
+                Console.WriteLine($"Found SiLA2ExampleServer at {connectionInfo.Address}:{connectionInfo.Port}");
+                Console.WriteLine("Connecting to server...");
+                var grpcChannel = await configurator.GetChannel(
+                    connectionInfo.Address,
+                    connectionInfo.Port,
+                    false,
+                    connectionInfo.SilaCA.GetCaFromFormattedCa());
+
+                var temperatureFeatureClient = new TemperatureFeature.TemperatureFeatureClient(grpcChannel);
+                var greetingClient = new GreetingFeature.GreetingFeatureClient(grpcChannel);
+
+                // GreetingFeature usage
+                Console.WriteLine("Invoke SayHello command:");
+                var sayHelloResponse = greetingClient.SayHello(new SayHello_Parameters
+                {
+                    Name = new SiLAString { Value = "John" }
+                });
+                Console.WriteLine("SayHello executed (response empty by definition).");
+
+                Console.WriteLine("Subscribe to LastGreeting stream (3 samples)...");
+                using (var greetingCts = new CancellationTokenSource())
+                {
+                    int count = 0;
+                    var greetingStream = greetingClient.Subscribe_LastGreeting(new Subscribe_LastGreeting_Parameters(), cancellationToken: greetingCts.Token);
+                    try
+                    {
+                        await foreach (var update in greetingStream.ResponseStream.ReadAllAsync(greetingCts.Token))
+                        {
+                            var msg = update.LastGreeting?.Message?.Value ?? "<empty>";
+                            var ts = update.LastGreeting?.TimestampUnixMs?.Value ?? 0;
+                            var dt = ts > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(ts).ToString("O") : "-";
+                            Console.WriteLine($"[LastGreeting] Message='{msg}' Timestamp='{dt}'");
+                            if (++count >= 3) break;
+                        }
+                    }
+                    finally
+                    {
+                        greetingCts.Cancel();
+                    }
+                }
+
+                // TemperatureFeature usage
+                Console.WriteLine("Invoke MeasureTemperature command:");
+                var measureResponse = temperatureFeatureClient.MeasureTemperature(new MeasureTemperature_Parameters());
+                Console.WriteLine("MeasureTemperature executed (response empty).");
+
+                Console.WriteLine("Subscribe to CurrentTemperature stream (5 samples)...");
+                using (var tempCts = new CancellationTokenSource())
+                {
+                    int received = 0;
+                    var tempStream = temperatureFeatureClient.Subscribe_CurrentTemperature(new Subscribe_CurrentTemperature_Parameters(), cancellationToken: tempCts.Token);
+                    try
+                    {
+                        await foreach (var reading in tempStream.ResponseStream.ReadAllAsync(tempCts.Token))
+                        {
+                            var value = reading.CurrentTemperature?.ValueCelsius?.Value ?? double.NaN;
+                            var ts = reading.CurrentTemperature?.TimestampUnixMs?.Value ?? 0;
+                            var dt = ts > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(ts).ToString("O") : "-";
+                            Console.WriteLine($"[Temp] {value:F3} °C @ {dt}");
+                            if (++received >= 5) break;
+                        }
+                    }
+                    finally
+                    {
+                        tempCts.Cancel();
+                    }
+                }
             }
 
             Console.WriteLine("Done. Press Enter to exit.");

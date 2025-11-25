@@ -11,6 +11,7 @@
     <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <PackageReference Include="SiLA2.AspNetCore" Version="7.5.4" />
   </ItemGroup>
 
   <ItemGroup>

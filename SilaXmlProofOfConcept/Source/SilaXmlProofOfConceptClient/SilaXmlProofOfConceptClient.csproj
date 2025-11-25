@@ -9,10 +9,19 @@
 
   <ItemGroup>
     <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+    <PackageReference Include="SiLA2.Client" Version="7.5.4" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SilaXmlProofOfConceptContracts\SilaXmlProofOfConceptContracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

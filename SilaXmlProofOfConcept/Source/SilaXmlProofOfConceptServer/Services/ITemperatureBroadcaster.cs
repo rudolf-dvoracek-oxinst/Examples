@@ -1,8 +1,9 @@
 namespace SilaXmlProofOfConceptServer.Services;
 
-using Sila2.Examples.Temperature.V1;
+using System;
 
 public interface ITemperatureBroadcaster
 {
-    void Broadcast(TemperatureReading reading);
-}
+    void Broadcast(TemperatureSample sample);
+    IDisposable Subscribe(Action<TemperatureSample> handler);
+}    
