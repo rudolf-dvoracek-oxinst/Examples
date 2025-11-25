@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Feature SiLA2Version="1.0" FeatureVersion="1.0" Originator="oxfordinstruments"
+         Category="examples"
+         xmlns="http://www.sila-standard.org"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.sila-standard.org https://gitlab.com/SiLA2/sila_base/raw/master/schema/FeatureDefinition.xsd">
+  <Identifier>GreetingFeature</Identifier>
+  <DisplayName>Greeting Feature</DisplayName>
+  <Description>Example greeting feature offering a hello command and a last greeting property.</Description>
+
+  <Command>
+    <Identifier>SayHello</Identifier>
+    <DisplayName>Say Hello</DisplayName>
+    <Description>Return a greeting for the provided name (updates LastGreeting).</Description>
+    <Observable>No</Observable>
+    <Parameter>
+      <Identifier>Name</Identifier>
+      <DisplayName>Name</DisplayName>
+      <Description>Name to greet.</Description>
+      <DataType>
+        <Basic>String</Basic>
+      </DataType>
+    </Parameter>
+  </Command>
+
+  <Property>
+    <Identifier>LastGreeting</Identifier>
+    <DisplayName>Last Greeting</DisplayName>
+    <Description>Most recent greeting returned by SayHello.</Description>
+    <Observable>Yes</Observable>
+    <DataType>
+      <Structure>
+        <Element>
+          <Identifier>Message</Identifier>
+          <DisplayName>Message</DisplayName>
+          <Description>Greeting text.</Description>
+          <DataType>
+            <Basic>String</Basic>
+          </DataType>
+        </Element>
+        <Element>
+          <Identifier>TimestampUnixMs</Identifier>
+          <DisplayName>Timestamp (Unix ms)</DisplayName>
+          <Description>Unix time (milliseconds) when the greeting was produced.</Description>
+          <DataType>
+            <Basic>Integer</Basic>
+          </DataType>
+        </Element>
+      </Structure>
+    </DataType>
+  </Property>
+</Feature>
